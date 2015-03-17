@@ -13,20 +13,23 @@
 @end
 
 @implementation ViewController
-@synthesize button,label,string,num1,num2,num3,num4,bGo;//string保存字符，显示数值。num1是存输入的数值，num2是存运算符前的数值，num3是运算结果，num4是判断进行何种运算
+//string保存字符，显示数值。num1是存输入的数值，num2是存运算符前的数值，num3是运算结果，num4是判断进行何种运算
+//bGo 是否做＝运算；bAddSymbol是否添加运算符号, bClean为是否删除
+@synthesize button,label,string,num1,num2,num3,num4,bGo,bAddSymbol,bClean,m_BtnClean,screenWidth,screenHeight,btnY;
+
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
     
     //背景色
-    [self.view setBackgroundColor:[UIColor colorWithRed:123.0f/255.f green:115.0f/255.f blue:99.0f/255.f alpha:1.0f]];
+    [self.view setBackgroundColor:[UIColor colorWithRed:31.f/255.f green:32.f/255.f blue:34.f/255.f alpha:1.0f]];
     
     CGSize mSize = [[UIScreen mainScreen] bounds].size;
-    CGFloat screenWidth = mSize.width;
-    CGFloat screenHeight = mSize.height;
-    CGFloat btnY = screenHeight*0.4;
-    CGFloat btnHeight = (screenHeight*0.6)/5;
+    screenWidth = mSize.width;
+    screenHeight = mSize.height;
+    btnY = screenHeight*0.3;
+    CGFloat btnHeight = (screenHeight*0.7)/5;
     CGFloat btnWidth = screenWidth/4;
     bGo = false;
     
@@ -47,11 +50,10 @@
     self.label=[[UILabel alloc]initWithFrame:CGRectMake(10, 10, screenWidth-20, btnY-20)];
     [self.view addSubview:label];
     self.label.backgroundColor=[UIColor clearColor];//清空背景颜色
-    self.label.textColor=[UIColor blackColor];//字体颜色
+    self.label.textColor=[UIColor whiteColor];//字体颜色
     self.label.textAlignment=NSTextAlignmentRight;//字体居右
-    self.label.font=[UIFont systemFontOfSize:32.4];
-    self.label.text=@"0";//初始为0
-    
+    [self.label setLineBreakMode:NSLineBreakByTruncatingHead];
+    [self setOutPut:@"0"];
     
     //添加1-9数字
     NSArray *array=[NSArray arrayWithObjects:@"1",@"2",@"3",@"4",@"5",@"6",@"7",@"8",@"9", nil];
@@ -92,7 +94,8 @@
                                 FrameRect:CGRectMake(btnWidth*3, screenHeight-btnHeight*(i+2), btnWidth, btnHeight)
                                 NormalColor:symbolNormalCol SelectColor:symbolSelectCol];
         [button1 setTitleColor: [UIColor whiteColor] forState:UIControlStateNormal];
-        [button1 setTitleColor: [UIColor colorWithRed:104.f/255.0f green:104.f/255.0f blue:104.f/255.0f alpha:1.0f] forState:UIControlStateSelected];
+        [button1 setTitleColor: [UIColor colorWithRed:104.f/255.0f green:104.f/255.0f blue:104.f/255.0f alpha:1.0f] forState:UIControlStateHighlighted];
+        button1.titleLabel.font = [UIFont systemFontOfSize:50];
         [self.view addSubview:button1];
         [button1 addTarget:self action:@selector(two:) forControlEvents:UIControlEventTouchUpInside];
     }
@@ -102,7 +105,8 @@
                                 FrameRect:CGRectMake(btnWidth*3, screenHeight-btnHeight, btnWidth, btnHeight)
                                 NormalColor:symbolNormalCol SelectColor:symbolSelectCol];
     [button2 setTitleColor: [UIColor whiteColor] forState:UIControlStateNormal];
-    [button2 setTitleColor: [UIColor colorWithRed:104.f/255.0f green:104.f/255.0f blue:104.f/255.0f alpha:1.0f] forState:UIControlStateSelected];
+    [button2 setTitleColor: [UIColor colorWithRed:104.f/255.0f green:104.f/255.0f blue:104.f/255.0f alpha:1.0f] forState:UIControlStateHighlighted];
+    button2.titleLabel.font = [UIFont systemFontOfSize:50];
     [button2 addTarget:self action:@selector(go:) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:button2];
     
@@ -113,9 +117,10 @@
                                       NormalColor:normalCol2 SelectColor:selectCol2];
     [button3 addTarget:self action:@selector(clean:) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:button3];
+    self.m_BtnClean = button3;
     
     //添加 ＋－符号
-    UIButton *button5 = [self createBtnWithTittle:@"＋／－"
+    UIButton *button5 = [self createBtnWithTittle:@"+/-"
                                         FrameRect:CGRectMake(btnWidth, btnY, btnWidth, btnHeight)
                                       NormalColor:normalCol2 SelectColor:selectCol2];
     [button5 addTarget:self action:@selector(three:) forControlEvents:UIControlEventTouchUpInside];
@@ -145,6 +150,7 @@
     }
     NSString *aString = [sender currentTitle];
     
+    //输入的事小数点.,在字符串中找到点，停止输入第二个点， 如果字符串时空的，修正字符串为@“0”
     if([aString isEqualToString:@"."])
     {
         NSRange range;
@@ -160,29 +166,39 @@
     }
     else if([aString isEqualToString:@"0"] && self.num1 == 0)
     {
+        //显示的0 不是0. 不会连续输入多个0
         NSRange range;
         range = [self.string rangeOfString:@"."];
         if(range.location == NSNotFound)
         {
-            self.label.text=@"0";//显示数值
+            [self setOutPut:@"0"];
             return;
         }
     }
     
     [self.string appendString:aString];//数字连续输入
-    self.label.text=[NSString stringWithString:string];//显示数值
+    [self setOutPut:[NSString stringWithString:string]];
     self.num1=[self.label.text doubleValue];//保存输入的数值
     NSLog(@"%f",self.num1);
     
+    //新的运算，需要覆盖之前的运算结果，用于开启新的运算
+    //bGo == true && self.num4!=0 表示已经做了＝运算，尚未输入新的符号运算
+    if(bGo == true && self.num4!=0 && bAddSymbol == false)
+    {
+        self.num4 = 0;
+    }
     bGo = false;
+    bAddSymbol =false;
+    [m_BtnClean setTitle:@"C" forState:UIControlStateNormal];//按钮文本
+    bClean = false;
 }
 
 -(void)two:(id)sender
 {
-    if(bGo == false && self.num4 != 0)
+    //bGo == false && self.num4!=0 表示尚未做＝运算，尚未输入新的符号运算，用作连续加减乘除
+    if(bGo == false && self.num4 != 0 && bAddSymbol == false)
     {
         [self go:sender];
-        bGo = true;
     }
     [self.string setString:@""];//字符串清零
     [self.string appendString:[sender currentTitle]];
@@ -209,6 +225,7 @@
     {
         self.num4=4;
     }
+    bAddSymbol = true;
 }
 
 //数值取反和％
@@ -216,18 +233,23 @@
 {
     NSString *symbolStr = [[NSString alloc] init];
     symbolStr =[sender currentTitle];
-    if ([symbolStr isEqualToString:@"＋／－"])//hasPrefix:判断字符串以加号开头
+    if ([symbolStr isEqualToString:@"+/-"])
     {
         self.num3= -1*[self.label.text doubleValue];
-        self.label.text=[NSString stringWithFormat:@"%f",self.num3];//计算结果显示出来
-        [self.string setString:@""];
     }
     else if([symbolStr isEqualToString:@"%"])
     {
         self.num3= 0.01*[self.label.text doubleValue];
-        self.label.text=[NSString stringWithFormat:@"%f",self.num3];//计算结果显示出来
-        [self.string setString:@""];
     }
+    else
+    {
+        return;
+    }
+    
+    NSString *sstring = [NSString stringWithFormat:@"%.15f",self.num3];
+    sstring = [self stringMethod:sstring];
+    [self setOutPut:sstring];
+    [self.string setString:@""];
 }
 
 //=运算
@@ -236,7 +258,7 @@
     bGo = true;
     if(self.num4==4 && self.num1==0)
     {
-        self.label.text = [NSString stringWithFormat:@"不是数字"];
+        [self setOutPut:@"不是数字"];//保证下次输入时清零
         [self.string setString:@""];//清空字符串
         self.num3=0;
         self.num2=0;
@@ -269,19 +291,111 @@
         self.num3=self.num1;
     }
     
-    self.label.text=[NSString stringWithFormat:@"%f",self.num3];//计算结果显示出来
+    //运算结果是整数
+    if(floor(self.num3)==self.num3)
+    {
+        [self setOutPut:[NSString stringWithFormat:@"%d",(int)self.num3]];
+    }
+    else
+    {
+        NSString *sstring = [NSString stringWithFormat:@"%.15f",self.num3];
+        sstring = [self stringMethod:sstring];
+        [self setOutPut:sstring];
+    }
+    
     [self.string setString:@""];
+    
+    NSLog(@"height = %.2f", self.label.frame.size.height);
 }
+
+//去除小数位多余的0
+-(NSString *)stringMethod:(NSString *)str{
+ 
+    NSUInteger length = str.length;
+    
+    NSRange range;
+    range = [str rangeOfString:@"."];
+    if(range.location == NSNotFound)
+    {
+        return str;
+    }
+    else
+    {
+        for(int i=0; i< (length-range.location); i++)
+        {
+            NSString * tempstring = [str substringWithRange:NSMakeRange(length-2-i, 1)];
+            if(![tempstring isEqualToString:@"0"])
+            {
+                if([tempstring isEqualToString:@"."])
+                {
+                    i++;
+                }
+                str = [str substringWithRange:NSMakeRange(0, length-1-i)];
+                break;
+            }
+        }
+    }
+    
+    return str;
+}
+
+-(void)setOutPut:(NSString *)str
+{
+    float posY = 5;
+    float frameWidth = screenWidth-20;
+    NSUInteger length = str.length;
+    if(length <=9)
+    {
+        self.label.font=[UIFont systemFontOfSize:60];
+        [self.label setFrame:(CGRectMake(10, btnY-60-posY, frameWidth, 60))];
+    }
+    else if(length <= 25)
+    {
+        self.label.minimumScaleFactor = 0.33;
+        self.label.adjustsFontSizeToFitWidth = YES;
+    }
+//    else if(length <= 18)
+//    {
+//        float fontheight = (18-length)/9.f*28+30;
+//        self.label.font=[UIFont systemFontOfSize:fontheight ];
+//        [self.label setFrame:(CGRectMake(10, btnY-fontheight-posY, frameWidth, fontheight))];
+//    }
+//    else if(length <= 36)
+//    {
+//        float fontheight = (36-length)/36.f*15+18;
+//        self.label.font=[UIFont systemFontOfSize:fontheight ];
+//        [self.label setFrame:(CGRectMake(10, btnY-fontheight-posY, frameWidth, fontheight))];
+//    }
+    else
+    {
+        self.label.adjustsFontSizeToFitWidth = NO;
+        float fontheight = 20.f;
+        self.label.font=[UIFont systemFontOfSize:fontheight ];
+        [self.label setFrame:(CGRectMake(10, btnY-fontheight-posY, frameWidth, fontheight))];
+    }
+    self.label.text=str;//计算结果显示出来
+}
+
 
 //当按下清除建时，所有数据清零
 -(void)clean:(id)sender{
-    [self.string setString:@""];//清空字符串
-    self.num3=0;
-    self.num2=0;
-    self.num1=0;
-    self.num4=0;
-    self.label.text=@"0";//保证下次输入时清零
-    
+    if(!bClean)
+    {
+        [m_BtnClean setTitle:@"AC" forState:UIControlStateNormal];//按钮文本
+        bClean = true;
+        [self setOutPut:@"0"];
+        [self setNum1:0];
+        [self.string setString:@""];//数字连续输入
+    }
+    else
+    {
+        [self.string setString:@""];//清空字符串
+        self.num3=0;
+        self.num2=0;
+        self.num1=0;
+        self.num4=0;
+        [self setOutPut:@"0"];//保证下次输入时清零
+    }
 }
 
 -(UIImage *)imageWithColor:(UIColor *)color size:(CGSize)size
@@ -300,23 +414,22 @@
 
 -(UIButton *)createBtnWithTittle:(NSString *)strTittle FrameRect:(CGRect)framerect NormalColor:(UIColor*)normalcolor SelectColor:(UIColor*)selectcolor
 {
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-    CGColorRef colorref = CGColorCreate(colorSpace,(CGFloat[]){ 0, 0, 0, 1 });
+    CGColorRef colorref = CGColorCreate(CGColorSpaceCreateDeviceRGB(),(CGFloat[]){ 146.f/255.f, 147.f/255.f, 150.f/255.f, 1 });
     
     UIButton * mButton =[UIButton buttonWithType:UIButtonTypeCustom];
     
     //[mButton setBackgroundColor:[UIColor whiteColor]];
     [mButton setFrame:framerect];//按钮大小和位置
     [mButton setTitle:strTittle forState:UIControlStateNormal];//按钮文本
+    mButton.titleLabel.font = [UIFont systemFontOfSize:28];
     [mButton setTitleColor: [UIColor blackColor] forState:UIControlStateNormal];
-    
-    
+
     [mButton.layer setMasksToBounds:YES];
     [mButton.layer setBorderWidth:0.5];   //边框宽度
     [mButton.layer setBorderColor:colorref];//边框颜色
     
     [mButton setBackgroundImage: [self imageWithColor:normalcolor size:framerect.size] forState:UIControlStateNormal];
-    [mButton setBackgroundImage: [self imageWithColor:selectcolor size:framerect.size] forState:UIControlStateSelected];
+    [mButton setBackgroundImage: [self imageWithColor:selectcolor size:framerect.size] forState:UIControlStateHighlighted];
     return mButton;
 }
 
